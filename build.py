@@ -85,6 +85,21 @@ def clone_pymavlink() -> None:
 
 def clone_px4() -> None:
     if os.path.isdir(PX4_DIR):
+        # first, figure out what version we have locally
+        local_version = next(
+            l.split("/")[-1]
+            for l in subprocess.check_output(
+                ["git", "remote", "show", "origin", "-n"], cwd=PX4_DIR
+            )
+            .decode()
+            .splitlines()
+            if l.strip().startswith("refs")
+        )
+        if local_version != PX4_VERSION:
+            print(f"Existing PX4 checkout is {local_version}, re-cloning")
+            shutil.rmtree(PX4_DIR)
+            clone_px4()
+
         # reset checkout if we already have it
         # this will fail on PX4 version changes
         print2("Resetting PX4 checkout")
@@ -124,6 +139,19 @@ def clone_px4() -> None:
 
 def build_pymavlink(message_definitions_dir: str, bell_xml_def: str) -> None:
     print2("Generating pymavlink package")
+
+    print2("Applying Pymavlink patch")
+    subprocess.check_call(["git", "reset", "--hard"], cwd=PYMAVLINK_DIR)
+    subprocess.check_call(
+        [
+            "git",
+            "apply",
+            "--ignore-space-change",
+            "--ignore-whitespace",
+            os.path.join(THIS_DIR, "patches", f"pymavlink_{PX4_VERSION}.patch"),
+        ],
+        cwd=PYMAVLINK_DIR,
+    )
 
     # copy message definitions from px4 so we're using the exact same version
     shutil.rmtree(
@@ -166,11 +194,12 @@ def build_pymavlink(message_definitions_dir: str, bell_xml_def: str) -> None:
             "pymavlink.tools.mavgen",
             "--lang=WLua",
             "--wire-protocol=2.0",
-            f"--output={os.path.join(DIST_DIR, 'bell.lua')}",
+            f"--output={os.path.join(DIST_DIR, 'bell-avr.lua')}",
             bell_xml_def,
         ],
         cwd=os.path.join(PYMAVLINK_DIR, ".."),
     )
+
 
 def build_px4(targets: List[str], git_hash: str) -> None:
     print2("Building PX4 firmware")
@@ -188,8 +217,12 @@ def build_px4(targets: List[str], git_hash: str) -> None:
             os.path.join(DIST_DIR, f"{target}.{PX4_VERSION}.{git_hash}.px4"),
         )
 
+
 def container(
-    should_build_pymavlink: bool, should_build_px4: bool, git_hash: str, targets: List[str]
+    should_build_pymavlink: bool,
+    should_build_px4: bool,
+    git_hash: str,
+    targets: List[str],
 ) -> None:
     # code that runs inside the container
     if PX4_VERSION < "v1.13.0":
@@ -289,7 +322,7 @@ def host(build_pymavlink: bool, build_px4: bool) -> None:
             "--global",
             "--add",
             "safe.directory",
-            os.path.abspath(os.path.join(THIS_DIR, "..")),
+            os.path.abspath(PX4_DIR),
         ]
     )
 
@@ -327,6 +360,7 @@ def host(build_pymavlink: bool, build_px4: bool) -> None:
     # run Docker image
     print2(f"Running: {' '.join(cmd)}")
     subprocess.check_call(cmd, stdout=sys.stdout, stderr=sys.stderr)
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Generate a PX4/Pymavlink build")

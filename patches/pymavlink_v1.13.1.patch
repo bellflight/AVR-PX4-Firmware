@@ -1,0 +1,23 @@
+diff --git a/setup.py b/setup.py
+index df5e3b3..6aea0fc 100644
+--- a/setup.py
++++ b/setup.py
+@@ -106,15 +106,15 @@ class custom_build_py(build_py):
+         build_py.run(self)
+
+
+-setup (name = 'pymavlink',
++setup (name = 'bell-avr-pymavlink',
+        version = __version__,
+-       description = 'Python MAVLink code',
++       description = 'Bell AVR Python MAVLink code',
+        long_description = ('A Python library for handling MAVLink protocol streams and log files. This allows for the '
+                            'creation of simple scripts to analyse telemetry logs from autopilots such as ArduPilot which use '
+                            'the MAVLink protocol. See the scripts that come with the package for examples of small, useful '
+                            'scripts that use pymavlink. For more information about the MAVLink protocol see '
+                            'https://mavlink.io/en/'),
+-       url = 'https://github.com/ArduPilot/pymavlink/',
++       url = 'https://github.com/bellflight/AVR-PX4-Firmware/',
+        classifiers=['Development Status :: 5 - Production/Stable',
+                     'Environment :: Console',
+                     'Intended Audience :: Science/Research',

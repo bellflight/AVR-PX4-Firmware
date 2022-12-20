@@ -6,15 +6,9 @@ on:
     branches:
       - main
       - develop
-    paths:
-      - bell.xml
-      - .px4-version
   push:
     branches:
       - main
-    paths:
-      - bell.xml
-      - .px4-version
 
 jobs:
   px4-build:

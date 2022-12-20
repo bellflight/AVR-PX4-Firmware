@@ -341,7 +341,7 @@ def host(build_pymavlink: bool, build_px4: bool, version: str) -> None:
     docker_image = "docker.io/px4io/px4-dev-nuttx-focal:latest"
     if build_pymavlink and not build_px4:
         # if only building pymavlink, use a simpler ARM compatible image
-        docker_image = "docker.io/library/python:3.11-buster"
+        docker_image = "docker.io/library/python:3.11-bullseye"
 
     cmd = [
         "docker",

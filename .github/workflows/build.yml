@@ -63,7 +63,7 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ env.SHORT_SHA }}
-          path: dist/*.px4
+          path: path/*.px4
 
   pymavlink-build:
     runs-on: ubuntu-latest

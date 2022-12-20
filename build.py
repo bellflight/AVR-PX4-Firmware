@@ -358,7 +358,7 @@ def host(build_pymavlink: bool, build_px4: bool, version: str) -> None:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Generate a PX4/Pymavlink build")
     parser.add_argument("--container", action="store_true", help=argparse.SUPPRESS)
-    parser.add_argument("--inner-version", type=str, help=argparse.SUPPRESS)
+    parser.add_argument("--version-inner", type=str, help=argparse.SUPPRESS)
     parser.add_argument("--version", type=str, default="")
     parser.add_argument(
         "--pymavlink", action="store_true", help="Build Pymavlink package"
@@ -382,7 +382,7 @@ if __name__ == "__main__":
         parser.error("Sorry, cannot build PX4 on ARM")
 
     if args.container:
-        container(args.pymavlink, args.px4, args.inner_version, args.targets)
+        container(args.pymavlink, args.px4, args.version_inner, args.targets)
     else:
         check_sudo()
 

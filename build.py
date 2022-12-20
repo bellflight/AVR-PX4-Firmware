@@ -175,7 +175,7 @@ def build_pymavlink(
     new_env = os.environ.copy()
     new_env["MAVLINK_DIALECT"] = "bell"
     subprocess.check_call(
-        [sys.executable, "setup.py", "sdist", "bdist_wheel"],
+        [sys.executable, "setup.py", "sdist"], #, "bdist_wheel",],
         cwd=PYMAVLINK_DIR,
         env=new_env,
     )

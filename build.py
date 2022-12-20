@@ -201,7 +201,7 @@ def build_pymavlink(message_definitions_dir: str, bell_xml_def: str) -> None:
     )
 
 
-def build_px4(targets: List[str], git_hash: str) -> None:
+def build_px4(targets: List[str], version: str) -> None:
     print2("Building PX4 firmware")
 
     px4_build_dir = os.path.join(PX4_DIR, "build")
@@ -214,14 +214,14 @@ def build_px4(targets: List[str], git_hash: str) -> None:
         subprocess.check_call(["make", target, "-j"], cwd=PX4_DIR)
         shutil.copyfile(
             os.path.join(px4_build_dir, target, f"{target}.px4"),
-            os.path.join(DIST_DIR, f"{target}.{PX4_VERSION}.{git_hash}.px4"),
+            os.path.join(DIST_DIR, f"{target}.{PX4_VERSION}.{version}.px4"),
         )
 
 
 def container(
     should_build_pymavlink: bool,
     should_build_px4: bool,
-    git_hash: str,
+    version: str,
     targets: List[str],
 ) -> None:
     # code that runs inside the container
@@ -305,10 +305,10 @@ def container(
         build_pymavlink(message_definitions_dir, bell_xml_def)
 
     if should_build_px4:
-        build_px4(targets, git_hash)
+        build_px4(targets, version)
 
 
-def host(build_pymavlink: bool, build_px4: bool) -> None:
+def host(build_pymavlink: bool, build_px4: bool, version: str) -> None:
     # code that runs on the host operating system
 
     # make the target directory
@@ -326,18 +326,11 @@ def host(build_pymavlink: bool, build_px4: bool) -> None:
         ]
     )
 
-    # get the git hash of the current commit
-    git_hash = (
-        subprocess.check_output(["git", "rev-parse", "--short", "HEAD"], cwd=THIS_DIR)
-        .decode("utf-8")
-        .strip()
-    )
-
     # script to run inside the contaner
     script_cmd = (
         ["python3", "build.py"]
         + sys.argv[1:]
-        + ["--container", f"--git-hash={git_hash}"]
+        + ["--container", f"--version-inner={version}"]
     )
 
     # select a Dcoker image
@@ -365,7 +358,8 @@ def host(build_pymavlink: bool, build_px4: bool) -> None:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Generate a PX4/Pymavlink build")
     parser.add_argument("--container", action="store_true", help=argparse.SUPPRESS)
-    parser.add_argument("--git-hash", type=str, help=argparse.SUPPRESS)
+    parser.add_argument("--inner-version", type=str, help=argparse.SUPPRESS)
+    parser.add_argument("--version", type=str, default="")
     parser.add_argument(
         "--pymavlink", action="store_true", help="Build Pymavlink package"
     )
@@ -388,7 +382,18 @@ if __name__ == "__main__":
         parser.error("Sorry, cannot build PX4 on ARM")
 
     if args.container:
-        container(args.pymavlink, args.px4, args.git_hash, args.targets)
+        container(args.pymavlink, args.px4, args.inner_version, args.targets)
     else:
         check_sudo()
-        host(args.pymavlink, args.px4)
+
+        # if no version specified, default to git commit hash
+        if not args.version:
+            args.version = (
+                subprocess.check_output(
+                    ["git", "rev-parse", "--short", "HEAD"], cwd=THIS_DIR
+                )
+                .decode("utf-8")
+                .strip()
+            )
+
+        host(args.pymavlink, args.px4, args.version)

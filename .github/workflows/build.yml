@@ -51,6 +51,9 @@ jobs:
             px4-pymavlink-${{ hashFiles('.px4-version') }}-${{ hashFiles('patches/**') }}
             px4-pymavlink-${{ hashFiles('.px4-version') }}
 
+      - name: Get Short SHA
+        run: echo "SHORT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+
       - name: Build PX4 Firmware
         run: python3 build.py --px4 --targets ${{ matrix.px4_target }}
 
@@ -65,7 +68,7 @@ jobs:
         if: github.event_name != 'pull_request'
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ github.sha }}
+          tag_name: ${{ env.SHORT_SHA }}
           path: dist/*.px4
 
   pymavlink-build:

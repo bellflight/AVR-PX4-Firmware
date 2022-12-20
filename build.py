@@ -137,7 +137,9 @@ def clone_px4() -> None:
     )
 
 
-def build_pymavlink(message_definitions_dir: str, bell_xml_def: str) -> None:
+def build_pymavlink(
+    message_definitions_dir: str, bell_xml_def: str, should_build_wireshark: bool
+) -> None:
     print2("Generating pymavlink package")
 
     print2("Applying Pymavlink patch")
@@ -187,18 +189,19 @@ def build_pymavlink(message_definitions_dir: str, bell_xml_def: str) -> None:
 
     # generate lua plugins for Wireshark
     # https://mavlink.io/en/guide/wireshark.html
-    subprocess.check_call(
-        [
-            sys.executable,
-            "-m",
-            "pymavlink.tools.mavgen",
-            "--lang=WLua",
-            "--wire-protocol=2.0",
-            f"--output={os.path.join(DIST_DIR, 'bell-avr.lua')}",
-            bell_xml_def,
-        ],
-        cwd=os.path.join(PYMAVLINK_DIR, ".."),
-    )
+    if should_build_wireshark:
+        subprocess.check_call(
+            [
+                sys.executable,
+                "-m",
+                "pymavlink.tools.mavgen",
+                "--lang=WLua",
+                "--wire-protocol=2.0",
+                f"--output={os.path.join(DIST_DIR, 'bell-avr.lua')}",
+                bell_xml_def,
+            ],
+            cwd=os.path.join(PYMAVLINK_DIR, ".."),
+        )
 
 
 def build_px4(targets: List[str], version: str) -> None:
@@ -221,6 +224,7 @@ def build_px4(targets: List[str], version: str) -> None:
 def container(
     should_build_pymavlink: bool,
     should_build_px4: bool,
+    should_build_wireshark: bool,
     version: str,
     targets: List[str],
 ) -> None:
@@ -302,7 +306,7 @@ def container(
     )
 
     if should_build_pymavlink:
-        build_pymavlink(message_definitions_dir, bell_xml_def)
+        build_pymavlink(message_definitions_dir, bell_xml_def, should_build_wireshark)
 
     if should_build_px4:
         build_px4(targets, version)
@@ -364,6 +368,9 @@ if __name__ == "__main__":
         "--pymavlink", action="store_true", help="Build Pymavlink package"
     )
     parser.add_argument("--px4", action="store_true", help="Build PX4 firmware")
+    parser.add_argument(
+        "--wireshark", action="store_true", help="Build Wireshark Lua plugins"
+    )
     # pixhawk v5X, v6x, v6c and NXP
     parser.add_argument(
         "--targets",
@@ -381,8 +388,13 @@ if __name__ == "__main__":
     if args.px4 and platform.machine() == "aarch64":
         parser.error("Sorry, cannot build PX4 on ARM")
 
+    if args.wireshark and not args.pymavlink:
+        parser.error("Cannot build Wireshark plugins without pymavlink")
+
     if args.container:
-        container(args.pymavlink, args.px4, args.version_inner, args.targets)
+        container(
+            args.pymavlink, args.px4, args.wireshark, args.version_inner, args.targets
+        )
     else:
         check_sudo()
 

@@ -200,6 +200,8 @@ def main(
     version: str,
     targets: List[str],
 ) -> None:
+    os.makedirs(DIST_DIR)
+
     if PX4_VERSION < "v1.13.0":
         clone_pymavlink()
 
@@ -278,7 +280,15 @@ def main(
     # changes need to be committed to build
     subprocess.check_call(["git", "add", "."], cwd=PX4_DIR)
     subprocess.check_call(
-        ["git", "commit", "-m", "Local commit to facilitate build"], cwd=PX4_DIR
+        [
+            "git",
+            "commit",
+            "-c",
+            "commit.gpgsign=false",
+            "-m",
+            "Local commit to facilitate build",
+        ],
+        cwd=PX4_DIR,
     )
 
     if should_build_pymavlink:
@@ -323,4 +333,4 @@ if __name__ == "__main__":
     if args.wireshark and not args.pymavlink:
         parser.error("Cannot build Wireshark plugins without pymavlink")
 
-    main(args.pymavlink, args.px4, args.wireshark, args.version_inner, args.targets)
+    main(args.pymavlink, args.px4, args.wireshark, args.version, args.targets)

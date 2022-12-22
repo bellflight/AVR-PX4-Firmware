@@ -1,0 +1,4 @@
+{
+	"image": "docker.io/px4io/px4-dev-nuttx-focal:latest",
+	"postCreateCommand": "apt install python-is-python3"
+}

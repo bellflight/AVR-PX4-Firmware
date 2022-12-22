@@ -1,6 +1,5 @@
 import argparse
 import os
-import platform
 import shutil
 import subprocess
 import sys
@@ -26,33 +25,6 @@ else:
         "mavlink",
         "pymavlink",
     )
-
-
-def check_sudo() -> None:
-    # skip these checks on Windows
-    if sys.platform == "win32":
-        return
-
-    # Check if Docker requires sudo
-    result = subprocess.run(
-        ["docker", "info"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
-    )
-    if result.returncode == 0:
-        # either we have permission to run docker as non-root
-        # or we have sudo
-        return
-
-    # re run ourselves with sudo
-    print("Needing sudo privileges to run docker, re-launching")
-
-    try:
-        sys.exit(
-            subprocess.run(["sudo", sys.executable, __file__] + sys.argv[1:]).returncode
-        )
-    except PermissionError:
-        sys.exit(0)
-    except KeyboardInterrupt:
-        sys.exit(1)
 
 
 def print2(msg: str) -> None:
@@ -175,7 +147,7 @@ def build_pymavlink(
     new_env = os.environ.copy()
     new_env["MAVLINK_DIALECT"] = "bell"
     subprocess.check_call(
-        [sys.executable, "setup.py", "sdist"], #, "bdist_wheel",],
+        [sys.executable, "setup.py", "sdist"],  # , "bdist_wheel",],
         cwd=PYMAVLINK_DIR,
         env=new_env,
     )
@@ -221,14 +193,15 @@ def build_px4(targets: List[str], version: str) -> None:
         )
 
 
-def container(
+def main(
     should_build_pymavlink: bool,
     should_build_px4: bool,
     should_build_wireshark: bool,
     version: str,
     targets: List[str],
 ) -> None:
-    # code that runs inside the container
+    os.makedirs(DIST_DIR, exist_ok=True)
+
     if PX4_VERSION < "v1.13.0":
         clone_pymavlink()
 
@@ -294,15 +267,27 @@ def container(
             cwd=os.path.join(PYMAVLINK_DIR, ".."),
         )
 
+    # git config does not matter, just need *something* to commit,
+    # they're not pushed anywhere
+    if subprocess.run(["git", "config", "user.name"]).returncode != 0:
+        subprocess.check_call(
+            ["git", "config", "user.email", "github-bot@bellflight.com"], cwd=PX4_DIR
+        )
+        subprocess.check_call(
+            ["git", "config", "user.name", "Github Actions"], cwd=PX4_DIR
+        )
+
     # changes need to be committed to build
-    # git config does not matter, just need *something* to commit
-    subprocess.check_call(
-        ["git", "config", "user.email", "github-bot@bellflight.com"], cwd=PX4_DIR
-    )
-    subprocess.check_call(["git", "config", "user.name", "Github Actions"], cwd=PX4_DIR)
     subprocess.check_call(["git", "add", "."], cwd=PX4_DIR)
     subprocess.check_call(
-        ["git", "commit", "-m", "Local commit to facilitate build"], cwd=PX4_DIR
+        [
+            "git",
+            "commit",
+            "--no-gpg-sign",
+            "-m",
+            "Local commit to facilitate build",
+        ],
+        cwd=PX4_DIR,
     )
 
     if should_build_pymavlink:
@@ -312,58 +297,17 @@ def container(
         build_px4(targets, version)
 
 
-def host(build_pymavlink: bool, build_px4: bool, version: str) -> None:
-    # code that runs on the host operating system
-
-    # make the target directory
-    os.makedirs(DIST_DIR, exist_ok=True)
-
-    # deal with git file permissions complaints
-    subprocess.check_output(
-        [
-            "git",
-            "config",
-            "--global",
-            "--add",
-            "safe.directory",
-            os.path.abspath(PX4_DIR),
-        ]
-    )
-
-    # script to run inside the contaner
-    script_cmd = (
-        ["python3", "build.py"]
-        + sys.argv[1:]
-        + ["--container", f"--version-inner={version}"]
-    )
-
-    # select a Dcoker image
-    docker_image = "docker.io/px4io/px4-dev-nuttx-focal:latest"
-    if build_pymavlink and not build_px4:
-        # if only building pymavlink, use a simpler ARM compatible image
-        docker_image = "docker.io/library/python:3.11-bullseye"
-
-    cmd = [
-        "docker",
-        "run",
-        "--rm",
-        "-w",
-        "/work",
-        "-v",
-        f"{THIS_DIR}:/work:rw",
-        docker_image,
-    ] + script_cmd
-
-    # run Docker image
-    print2(f"Running: {' '.join(cmd)}")
-    subprocess.check_call(cmd, stdout=sys.stdout, stderr=sys.stderr)
-
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Generate a PX4/Pymavlink build")
-    parser.add_argument("--container", action="store_true", help=argparse.SUPPRESS)
-    parser.add_argument("--version-inner", type=str, help=argparse.SUPPRESS)
-    parser.add_argument("--version", type=str, default="")
+    parser.add_argument(
+        "--version",
+        type=str,
+        default=subprocess.check_output(
+            ["git", "rev-parse", "--short", "HEAD"], cwd=THIS_DIR
+        )
+        .decode("utf-8")
+        .strip(),
+    )
     parser.add_argument(
         "--pymavlink", action="store_true", help="Build Pymavlink package"
     )
@@ -385,27 +329,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    if args.px4 and platform.machine() == "aarch64":
-        parser.error("Sorry, cannot build PX4 on ARM")
-
     if args.wireshark and not args.pymavlink:
         parser.error("Cannot build Wireshark plugins without pymavlink")
 
-    if args.container:
-        container(
-            args.pymavlink, args.px4, args.wireshark, args.version_inner, args.targets
-        )
-    else:
-        check_sudo()
-
-        # if no version specified, default to git commit hash
-        if not args.version:
-            args.version = (
-                subprocess.check_output(
-                    ["git", "rev-parse", "--short", "HEAD"], cwd=THIS_DIR
-                )
-                .decode("utf-8")
-                .strip()
-            )
-
-        host(args.pymavlink, args.px4, args.version)
+    main(args.pymavlink, args.px4, args.wireshark, args.version, args.targets)

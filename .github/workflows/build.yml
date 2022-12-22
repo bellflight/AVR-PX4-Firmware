@@ -49,7 +49,9 @@ jobs:
         run: echo "SHORT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
 
       - name: Build PX4 Firmware
-        run: python3 build.py --px4 --targets ${{ matrix.px4_target }}
+        uses: devcontainers/ci@v0.2
+        with:
+          runCmd: python3 build.py --px4 --targets ${{ matrix.px4_target }}
 
       - name: Upload PX4 Artifact
         if: github.event_name != 'push'
@@ -87,7 +89,9 @@ jobs:
             px4-firmware-${{ hashFiles('.px4-version') }}
 
       - name: Build Pymavlink Package
-        run: python3 build.py --pymavlink
+        uses: devcontainers/ci@v0.2
+        with:
+          runCmd: python3 build.py --pymavlink
 
       - name: Publish Package to PyPI
         if: github.event_name != 'pull_request'

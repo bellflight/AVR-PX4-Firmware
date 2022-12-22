@@ -200,7 +200,7 @@ def main(
     version: str,
     targets: List[str],
 ) -> None:
-    os.makedirs(DIST_DIR)
+    os.makedirs(DIST_DIR, exist_ok=True)
 
     if PX4_VERSION < "v1.13.0":
         clone_pymavlink()

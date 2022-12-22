@@ -283,8 +283,7 @@ def main(
         [
             "git",
             "commit",
-            "-c",
-            "commit.gpgsign=false",
+            "--no-gpg-sign",
             "-m",
             "Local commit to facilitate build",
         ],

@@ -2,16 +2,16 @@
 
 [![Build PX4/Pymavlink](https://github.com/bellflight/AVR-PX4-Firmware/actions/workflows/build.yml/badge.svg)](https://github.com/bellflight/AVR-PX4-Firmware/actions/workflows/build.yml)
 
-This repository produces builds of [PX4](https://px4.io/) with the patches 
-required for Bell AVR HIL GPS, along with modified versions of 
+This repository produces builds of [PX4](https://px4.io/) with the patches
+required for Bell AVR HIL GPS, along with modified versions of
 [Pymavlink](https://github.com/ardupilot/pymavlink).
 
 ## Usage
 
-*This repository needs to be used inside of a DevContainer.*
+**This repository needs to be used inside of a DevContainer.**
 
 When using VS Code, accept the "Clone in Volume" Devcontainer prompt.
-For Windows users, this will signficantly improve disk I/O and compile times.
+For Windows users, this will significantly improve disk I/O and compile times.
 
 ![](images/devcontainer-prompt.png)
 
@@ -42,5 +42,5 @@ optional arguments:
 
 - `.px4-version`: PX4 version to build against, in the style of `.python-version` or `.node-version`.
 - `AVR.params`: PX4 parameters to unconditionally trust the HIL GPS.
-- `bell.xml`: New MAVLink message
+- `bell.xml`: New MAVLink message definition.
 - `patches/`: PX4 and pymavlink patches to monkey patch the code.

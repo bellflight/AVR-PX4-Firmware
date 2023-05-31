@@ -13,7 +13,7 @@ on:
 jobs:
   px4-build:
     runs-on: ubuntu-latest
-    if: "!contains(github.event.head_commit.message, 'ci skip') && !contains(github.event.head_commit.message, 'px4 skip')"
+    if: "${{ !contains(github.event.head_commit.message, 'ci skip') && !contains(github.event.head_commit.message, 'px4 skip') }}"
 
     strategy:
       matrix:
@@ -51,7 +51,7 @@ jobs:
       - name: Build PX4 Firmware
         uses: devcontainers/ci@v0.2
         with:
-          runCmd: python3 build.py --px4 --targets ${{ matrix.px4_target }}
+          runCmd: vtr build-px4-${{ matrix.px4_target }}
 
       - name: Upload PX4 Artifact
         if: github.event_name != 'push'
@@ -71,7 +71,7 @@ jobs:
 
   pymavlink-build:
     runs-on: ubuntu-latest
-    if: "!contains(github.event.head_commit.message, 'ci skip') && !contains(github.event.head_commit.message, 'pymavlink skip')"
+    if: "${{ !contains(github.event.head_commit.message, 'ci skip') && !contains(github.event.head_commit.message, 'pymavlink skip') }}"
 
     steps:
       - name: Checkout Code
@@ -91,7 +91,7 @@ jobs:
       - name: Build Pymavlink Package
         uses: devcontainers/ci@v0.2
         with:
-          runCmd: python3 build.py --pymavlink
+          runCmd: vtr build-pymavlink
 
       - name: Publish Package to PyPI
         if: github.event_name != 'pull_request'

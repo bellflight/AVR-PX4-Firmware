@@ -1,0 +1,50 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "wipe-px4",
+            "command": "rm -rf build/",
+            "type": "shell"
+        },
+        {
+            "label": "build-pymavlink",
+            "command": "python3 build.py --pymavlink",
+            "type": "shell"
+        },
+        {
+            "label": "build-wireshark",
+            "command": "python3 build.py --wireshark",
+            "type": "shell"
+        },
+        {
+            "label": "build-px4",
+            "dependsOn": [
+                "build-px4-px4_fmu-v5x_default",
+                "build-px4-px4_fmu-v6c_default",
+                "build-px4-px4_fmu-v6x_default",
+                "build-px4-nxp_fmuk66-v3_default"
+            ],
+            "dependsOrder": "sequence"
+        },
+        {
+            "label": "build-px4-px4_fmu-v5x_default",
+            "command": "python3 build.py --px4 --targets px4_fmu-v5x_default",
+            "type": "shell"
+        },
+        {
+            "label": "build-px4-px4_fmu-v6c_default",
+            "command": "python3 build.py --px4 --targets px4_fmu-v6c_default",
+            "type": "shell"
+        },
+        {
+            "label": "build-px4-px4_fmu-v6x_default",
+            "command": "python3 build.py --px4 --targets px4_fmu-v6x_default",
+            "type": "shell"
+        },
+        {
+            "label": "build-px4-nxp_fmuk66-v3_default",
+            "command": "python3 build.py --px4 --targets nxp_fmuk66-v3_default",
+            "type": "shell"
+        }
+    ]
+}

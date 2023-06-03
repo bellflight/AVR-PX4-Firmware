@@ -380,7 +380,7 @@ if __name__ == "__main__":
             "px4_fmu-v5x_default",
             "px4_fmu-v6c_default",
             "px4_fmu-v6x_default",
-            "nxp_fmuk66-v3_default",
+            # "nxp_fmuk66-v3_default",
         ],
     )
 

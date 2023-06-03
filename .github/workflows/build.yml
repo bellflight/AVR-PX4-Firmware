@@ -21,7 +21,7 @@ jobs:
           - "px4_fmu-v5x_default" # pixhawk v5X
           - "px4_fmu-v6c_default" # pixhawk v6c
           - "px4_fmu-v6x_default" # pixhawk v6x
-          - "nxp_fmuk66-v3_default" # NXP
+          # - "nxp_fmuk66-v3_default" # NXP
 
     steps:
       - name: Checkout Code

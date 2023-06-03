@@ -51,7 +51,7 @@ jobs:
       - name: Build PX4 Firmware
         uses: devcontainers/ci@v0.2
         with:
-          runCmd: vtr build-px4-${{ matrix.px4_target }}
+          runCmd: vtr build-px4 --targets ${{ matrix.px4_target }}
 
       - name: Upload PX4 Artifact
         if: github.event_name != 'push'
@@ -96,5 +96,3 @@ jobs:
       - name: Publish Package to PyPI
         if: github.event_name != 'pull_request'
         uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          password: ${{ secrets.PYPI_API_TOKEN }}

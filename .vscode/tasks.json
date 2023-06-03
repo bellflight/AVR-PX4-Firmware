@@ -13,7 +13,7 @@
         },
         {
             "label": "build-wireshark",
-            "command": "python3 build.py --wireshark",
+            "command": "python3 build.py --pymavlink --wireshark",
             "type": "shell"
         },
         {

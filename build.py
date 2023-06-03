@@ -29,10 +29,25 @@ else:
 
 
 def print2(msg: str) -> None:
+    """
+    Print statement with a prefix.
+    """
     print(f"--- {msg}", flush=True)
 
 
+def touch_file(filename: str) -> None:
+    """
+    Creates the given file with no contet
+    """
+    with open(filename, "w"):
+        pass
+
+
 def clean_directory(directory: str, file_endings: List[str]) -> None:
+    """
+    Clean a directory of files with specific ends of the filenames
+    """
+
     # cancel if the directory is not already there
     if not os.path.isdir(directory):
         return
@@ -43,6 +58,12 @@ def clean_directory(directory: str, file_endings: List[str]) -> None:
 
 
 def clone_pymavlink() -> None:
+    """
+    Clone pymavlink.
+    """
+    if PX4_VERSION >= "v1.13.0":
+        return
+
     if os.path.isdir(PYMAVLINK_DIR):
         # update the checkout if we already have it
         print2("Updating pymavlink")
@@ -57,6 +78,10 @@ def clone_pymavlink() -> None:
 
 
 def clone_px4() -> None:
+    """
+    Clone and patch PX4.
+    """
+
     # file to record if PX4 has been patched
     check_patch_file = os.path.join(BUILD_DIR, ".px4-patched")
 
@@ -102,14 +127,36 @@ def clone_px4() -> None:
                 "apply",
                 "--ignore-space-change",
                 "--ignore-whitespace",
-                os.path.join(THIS_DIR, "patches", f"hil_gps_heading_{PX4_VERSION}.patch"),
+                os.path.join(
+                    THIS_DIR, "patches", f"hil_gps_heading_{PX4_VERSION}.patch"
+                ),
             ],
             cwd=PX4_DIR,
         )
 
         # record that it has been patched
-        with open(check_patch_file, "w") as fp:
-            pass
+        touch_file(check_patch_file)
+
+
+def install_dependencies() -> None:
+    """
+    Install any needed dependencies
+    """
+    print2("Installing Python dependencies")
+    subprocess.check_call(
+        [sys.executable, "-m", "pip", "install", "--upgrade", "pip", "wheel"]
+    )
+    subprocess.check_call(
+        [
+            sys.executable,
+            "-m",
+            "pip",
+            "install",
+            "-r",
+            os.path.join(PYMAVLINK_DIR, "requirements.txt"),
+        ]
+    )
+
 
 def build_pymavlink(
     message_definitions_dir: str, bell_xml_def: str, should_build_wireshark: bool
@@ -133,8 +180,7 @@ def build_pymavlink(
             cwd=PYMAVLINK_DIR,
         )
         # record that it has been patched
-        with open(check_patch_file, "w") as fp:
-            pass
+        touch_file(check_patch_file)
 
     # copy message definitions from px4 so we're using the exact same version
     print2("Copying message definitions")
@@ -150,16 +196,21 @@ def build_pymavlink(
     pymavlink_dist_dir = os.path.join(PYMAVLINK_DIR, "dist")
 
     # clean the pymavlink build and target dirs
-    print2("Cleaning output")
-    clean_directory(pymavlink_dist_dir, [".tar.gz", ".whl"])
-    clean_directory(DIST_DIR, [".tar.gz", ".whl"])
+    # print2("Cleaning output")
+    # clean_directory(pymavlink_dist_dir, [".tar.gz", ".whl"])
+    # clean_directory(DIST_DIR, [".tar.gz", ".whl"])
 
     # make a new environment with the mavlink dialect set
     new_env = os.environ.copy()
     new_env["MAVLINK_DIALECT"] = "bell"
     print2("Building package")
     subprocess.check_call(
-        [sys.executable, "setup.py", "sdist"],  # , "bdist_wheel",],
+        [
+            sys.executable,
+            "setup.py",
+            "sdist",
+            "bdist_wheel",
+        ],
         cwd=PYMAVLINK_DIR,
         env=new_env,
     )
@@ -195,8 +246,8 @@ def build_px4(targets: List[str], version: str) -> None:
     px4_build_dir = os.path.join(PX4_DIR, "build")
 
     # clean the PX4 build and target dir
-    clean_directory(px4_build_dir, [".px4"])
-    clean_directory(DIST_DIR, [".px4"])
+    # clean_directory(px4_build_dir, [".px4"])
+    # clean_directory(DIST_DIR, [".px4"])
 
     for target in targets:
         subprocess.check_call(["make", target, "-j"], cwd=PX4_DIR)
@@ -215,27 +266,14 @@ def main(
 ) -> None:
     os.makedirs(DIST_DIR, exist_ok=True)
 
-    if PX4_VERSION < "v1.13.0":
-        clone_pymavlink()
+    # clone pymavlink if necessary
+    clone_pymavlink()
 
     # get px4 cloned
     clone_px4()
 
     # install python dependencies for pymavlink
-    print2("Installing Python dependencies")
-    subprocess.check_call(
-        [sys.executable, "-m", "pip", "install", "--upgrade", "pip", "wheel"]
-    )
-    subprocess.check_call(
-        [
-            sys.executable,
-            "-m",
-            "pip",
-            "install",
-            "-r",
-            os.path.join(PYMAVLINK_DIR, "requirements.txt"),
-        ]
-    )
+    install_dependencies()
 
     # build directory paths
     if PX4_VERSION < "v1.13.0":
@@ -262,27 +300,30 @@ def main(
 
     bell_xml_def = os.path.join(message_definitions_dir, "bell.xml")
 
-    print2("Injecting Bell MAVLink message")
-    shutil.copyfile(os.path.join(THIS_DIR, "bell.xml"), bell_xml_def)
+    # file to record if mavlink has been committed
+    check_patch_file = os.path.join(BUILD_DIR, ".mavlink-commited")
 
-    # generate the mavlink C code
-    if PX4_VERSION < "v1.13.0":
-        subprocess.check_call(
-            [
-                sys.executable,
-                "-m",
-                "pymavlink.tools.mavgen",
-                "--lang=C",
-                "--wire-protocol=2.0",
-                f"--output={generated_message_dir}",
-                bell_xml_def,
-            ],
-            cwd=os.path.join(PYMAVLINK_DIR, ".."),
-        )
+    if not os.path.isfile(check_patch_file):
+        print2("Injecting Bell MAVLink message")
+        shutil.copyfile(os.path.join(THIS_DIR, "bell.xml"), bell_xml_def)
 
-    # git config does not matter, just need *something* to commit,
-    # they're not pushed anywhere
-    if subprocess.run(["git", "config", "user.name"]).returncode != 0:
+        # generate the mavlink C code
+        if PX4_VERSION < "v1.13.0":
+            subprocess.check_call(
+                [
+                    sys.executable,
+                    "-m",
+                    "pymavlink.tools.mavgen",
+                    "--lang=C",
+                    "--wire-protocol=2.0",
+                    f"--output={generated_message_dir}",
+                    bell_xml_def,
+                ],
+                cwd=os.path.join(PYMAVLINK_DIR, ".."),
+            )
+
+        # git config does not matter, just need *something* to commit,
+        # they're not pushed anywhere
         subprocess.check_call(
             ["git", "config", "user.email", "github-bot@bellflight.com"], cwd=PX4_DIR
         )
@@ -290,18 +331,21 @@ def main(
             ["git", "config", "user.name", "Github Actions"], cwd=PX4_DIR
         )
 
-    # changes need to be committed to build
-    subprocess.check_call(["git", "add", "."], cwd=PX4_DIR)
-    subprocess.check_call(
-        [
-            "git",
-            "commit",
-            "--no-gpg-sign",
-            "-m",
-            "Local commit to facilitate build",
-        ],
-        cwd=PX4_DIR,
-    )
+        # changes need to be committed to build
+        subprocess.check_call(["git", "add", "."], cwd=PX4_DIR)
+        subprocess.check_call(
+            [
+                "git",
+                "commit",
+                "--no-gpg-sign",
+                "-m",
+                "Local commit to facilitate build",
+            ],
+            cwd=PX4_DIR,
+        )
+
+        # record that it has been committed
+        touch_file(check_patch_file)
 
     if should_build_pymavlink:
         build_pymavlink(message_definitions_dir, bell_xml_def, should_build_wireshark)

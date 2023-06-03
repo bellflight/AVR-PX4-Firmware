@@ -1,4 +1,13 @@
 {
-	"image": "docker.io/px4io/px4-dev-nuttx-focal:latest",
-	"postCreateCommand": "apt-get install -y python-is-python3"
+	"dockerFile": "Dockerfile",
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"github.vscode-github-actions",
+				"actboy168.tasks",
+				"ms-python.python",
+				"redhat.vscode-xml"
+			]
+		}
+	}
 }

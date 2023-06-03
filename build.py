@@ -8,14 +8,15 @@ from typing import List
 THIS_DIR = os.path.abspath(os.path.dirname(__file__))
 DIST_DIR = os.path.join(THIS_DIR, "dist")
 
-PX4_DIR = os.path.join(THIS_DIR, "build", "PX4-Autopilot")
+BUILD_DIR = os.path.join(THIS_DIR, "build")
+PX4_DIR = os.path.join(BUILD_DIR, "PX4-Autopilot")
 
 # warning, v1.10.2 does not appear to build anymore
 with open(os.path.join(THIS_DIR, ".px4-version"), "r") as fp:
     PX4_VERSION = fp.read().strip()
 
 if PX4_VERSION < "v1.13.0":
-    PYMAVLINK_DIR = os.path.join(THIS_DIR, "build", "pymavlink")
+    PYMAVLINK_DIR = os.path.join(BUILD_DIR, "pymavlink")
 else:
     PYMAVLINK_DIR = os.path.join(
         PX4_DIR,
@@ -56,6 +57,9 @@ def clone_pymavlink() -> None:
 
 
 def clone_px4() -> None:
+    # file to record if PX4 has been patched
+    check_patch_file = os.path.join(BUILD_DIR, ".px4-patched")
+
     if os.path.isdir(PX4_DIR):
         # first, figure out what version we have locally
         local_version = next(
@@ -67,18 +71,12 @@ def clone_px4() -> None:
             .splitlines()
             if l.strip().startswith("refs")
         )
+        # if version does not match, nuke it
         if local_version != PX4_VERSION:
             print(f"Existing PX4 checkout is {local_version}, re-cloning")
-            shutil.rmtree(PX4_DIR)
+            shutil.rmtree(BUILD_DIR)
             clone_px4()
 
-        # reset checkout if we already have it
-        # this will fail on PX4 version changes
-        print2("Resetting PX4 checkout")
-        subprocess.check_call(["git", "fetch", "origin"], cwd=PX4_DIR)
-        subprocess.check_call(["git", "checkout", PX4_VERSION], cwd=PX4_DIR)
-        subprocess.check_call(["git", "reset", "--hard", PX4_VERSION], cwd=PX4_DIR)
-        subprocess.check_call(["git", "pull", "--recurse-submodules"], cwd=PX4_DIR)
     else:
         # clone fresh
         print2("Cloning PX4")
@@ -96,38 +94,50 @@ def clone_px4() -> None:
             ]
         )
 
-    print2("Applying PX4 patch")
-    subprocess.check_call(
-        [
-            "git",
-            "apply",
-            "--ignore-space-change",
-            "--ignore-whitespace",
-            os.path.join(THIS_DIR, "patches", f"hil_gps_heading_{PX4_VERSION}.patch"),
-        ],
-        cwd=PX4_DIR,
-    )
+    if not os.path.isfile(check_patch_file):
+        print2("Applying PX4 patch")
+        subprocess.check_call(
+            [
+                "git",
+                "apply",
+                "--ignore-space-change",
+                "--ignore-whitespace",
+                os.path.join(THIS_DIR, "patches", f"hil_gps_heading_{PX4_VERSION}.patch"),
+            ],
+            cwd=PX4_DIR,
+        )
 
+        # record that it has been patched
+        with open(check_patch_file, "w") as fp:
+            pass
 
 def build_pymavlink(
     message_definitions_dir: str, bell_xml_def: str, should_build_wireshark: bool
 ) -> None:
     print2("Generating pymavlink package")
 
-    print2("Applying Pymavlink patch")
-    subprocess.check_call(["git", "reset", "--hard"], cwd=PYMAVLINK_DIR)
-    subprocess.check_call(
-        [
-            "git",
-            "apply",
-            "--ignore-space-change",
-            "--ignore-whitespace",
-            os.path.join(THIS_DIR, "patches", f"pymavlink_{PX4_VERSION}.patch"),
-        ],
-        cwd=PYMAVLINK_DIR,
-    )
+    # file to record if Pymavlink has been patched
+    check_patch_file = os.path.join(BUILD_DIR, ".pymavlink-patched")
+
+    if not os.path.isfile(check_patch_file):
+        print2("Applying Pymavlink patch")
+        subprocess.check_call(["git", "reset", "--hard"], cwd=PYMAVLINK_DIR)
+        subprocess.check_call(
+            [
+                "git",
+                "apply",
+                "--ignore-space-change",
+                "--ignore-whitespace",
+                os.path.join(THIS_DIR, "patches", f"pymavlink_{PX4_VERSION}.patch"),
+            ],
+            cwd=PYMAVLINK_DIR,
+        )
+        # record that it has been patched
+        with open(check_patch_file, "w") as fp:
+            pass
 
     # copy message definitions from px4 so we're using the exact same version
+    print2("Copying message definitions")
     shutil.rmtree(
         os.path.join(PYMAVLINK_DIR, "message_definitions", "v1.0"),
         ignore_errors=True,
@@ -140,12 +150,14 @@ def build_pymavlink(
     pymavlink_dist_dir = os.path.join(PYMAVLINK_DIR, "dist")
 
     # clean the pymavlink build and target dirs
+    print2("Cleaning output")
     clean_directory(pymavlink_dist_dir, [".tar.gz", ".whl"])
     clean_directory(DIST_DIR, [".tar.gz", ".whl"])
 
     # make a new environment with the mavlink dialect set
     new_env = os.environ.copy()
     new_env["MAVLINK_DIALECT"] = "bell"
+    print2("Building package")
     subprocess.check_call(
         [sys.executable, "setup.py", "sdist"],  # , "bdist_wheel",],
         cwd=PYMAVLINK_DIR,
@@ -162,6 +174,7 @@ def build_pymavlink(
     # generate lua plugins for Wireshark
     # https://mavlink.io/en/guide/wireshark.html
     if should_build_wireshark:
+        print2("Building wireshark plugin")
         subprocess.check_call(
             [
                 sys.executable,

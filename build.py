@@ -8,12 +8,14 @@ from typing import List
 THIS_DIR = os.path.abspath(os.path.dirname(__file__))
 DIST_DIR = os.path.join(THIS_DIR, "dist")
 
-BUILD_DIR = os.path.join(THIS_DIR, "build")
-PX4_DIR = os.path.join(BUILD_DIR, "PX4-Autopilot")
-
 # warning, v1.10.2 does not appear to build anymore
 with open(os.path.join(THIS_DIR, ".px4-version"), "r") as fp:
     PX4_VERSION = fp.read().strip()
+
+# use a specific directory for a version
+BUILD_DIR = os.path.join(THIS_DIR, "build", PX4_VERSION)
+PX4_DIR = os.path.join(BUILD_DIR, "PX4-Autopilot")
+
 
 if PX4_VERSION < "v1.13.0":
     PYMAVLINK_DIR = os.path.join(BUILD_DIR, "pymavlink")

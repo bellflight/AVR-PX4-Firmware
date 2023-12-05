@@ -49,7 +49,7 @@ jobs:
         run: echo "SHORT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
 
       - name: Build PX4 Firmware
-        uses: devcontainers/ci@v0.2
+        uses: devcontainers/ci@v0.3
         with:
           runCmd: vtr build-px4 --targets ${{ matrix.px4_target }}
 
@@ -94,7 +94,7 @@ jobs:
             px4-firmware-${{ hashFiles('.px4-version') }}
 
       - name: Build Pymavlink Package
-        uses: devcontainers/ci@v0.2
+        uses: devcontainers/ci@v0.3
         with:
           runCmd: vtr build-pymavlink
 

@@ -55,7 +55,7 @@ jobs:
 
       - name: Upload PX4 Artifact
         if: github.event_name != 'push'
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: PX4 ${{ matrix.px4_target }} Firmware
           path: dist/*.px4
